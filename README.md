@@ -12,9 +12,9 @@ Features
 - Copyright: 2016 Saúl Piña <sauljabin@gmail.com>
 - Repository: https://github.com/sauljabin/xmlrpcwsc-dotnet
 - License: LGPL 3
-- Language: C#, .NET 4.5
-- IDE: Visual Studio 2012, MonoDevelop 5.9.6
-- Version: v1.3.0
+- Language: C#, .NET CF 3.5 (Windows Mobile 5.0, 6.0, 6.5)
+- IDE: Visual Studio 2008
+- Version: v1.3.0-wince
 
 
 Documentation
