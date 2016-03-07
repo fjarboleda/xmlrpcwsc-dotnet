@@ -1,4 +1,4 @@
-////
+﻿////
 /// Copyright (c) 2016 Saúl Piña <sauljabin@gmail.com>.
 /// 
 /// This file is part of xmlrpcwsc.
@@ -22,8 +22,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Xml;
 using System.Net;
-using System.Net.Security;
-using System.Security.Cryptography.X509Certificates;
 using System.IO;
 using System.Threading;
 
@@ -41,7 +39,7 @@ namespace XmlRpc {
         public static readonly int DefaultAttemptsTimeout = 500;
         public static readonly int DefaultConnectionLimit = 2;
         public static readonly ICredentials DefaultCredentials = CredentialCache.DefaultCredentials;
-        public static readonly IWebProxy DefaultWebProxy = WebRequest.DefaultWebProxy;
+        public static readonly IWebProxy DefaultWebProxy = GlobalProxySelection.GetEmptyWebProxy();
 
         private int connectionLimit;
         private int attempts;
@@ -196,7 +194,7 @@ namespace XmlRpc {
         /// </summary>
         /// <returns>The user agent</returns>
         public string GetUserAgent() {
-            return string.Format("{0} ({1}/{2}/{3}/{4}) {5}", ComponentInfo.Name, ComponentInfo.ComponentName, ComponentInfo.Version, ".NET", Environment.OSVersion, AppName).Trim();
+            return string.Format("{0} ({1}/{2}/{3}/{4}) {5}", ComponentInfo.Name, ComponentInfo.ComponentName, ComponentInfo.Version, ".NET CF", Environment.OSVersion, AppName).Trim();
         }
 
         /// <summary>
@@ -235,18 +233,6 @@ namespace XmlRpc {
         }
 
         /// <summary>
-        /// FOR SSL
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="certificate"></param>
-        /// <param name="chain"></param>
-        /// <param name="sslPolicyErrors"></param>
-        /// <returns></returns>
-        private bool OnValidateCertificate(object sender, X509Certificate certificate, X509Chain chain, SslPolicyErrors sslPolicyErrors) {
-            return true;
-        }
-
-        /// <summary>
         /// Send data in xml format
         /// </summary>
         /// <param name="dataRequest">Xml Document</param>
@@ -261,18 +247,18 @@ namespace XmlRpc {
         /// <param name="dataRequest">Data</param>
         /// <returns>Xml Response</returns>
         public XmlDocument SendRequest(string dataRequest) {
-            
+
             if (string.IsNullOrEmpty(Url))
                 throw new WebServiceException("URL must be different than empty or null");
 
-            ServicePointManager.ServerCertificateValidationCallback = OnValidateCertificate;
+            ServicePointManager.CertificatePolicy = new WebServiceAllPolicy();
             ServicePointManager.DefaultConnectionLimit = ConnectionLimit;
             ServicePointManager.Expect100Continue = false;
-            
+
             TimeSpan startTime = TimeSpan.FromMilliseconds(Environment.TickCount);
             AttemptsRequest = 0;
             bool successful = false;
-            string dataResponse = "";   
+            string dataResponse = "";
             XmlDocument xmlDocument = new XmlDocument();
 
             while (!successful) {
@@ -293,7 +279,7 @@ namespace XmlRpc {
 
                 if (Credentials != null)
                     request.Credentials = Credentials;
-            
+
                 try {
                     Stream requestStreamData = request.GetRequestStream();
                     requestStreamData.Write(bytesData, 0, bytesData.Length);
@@ -312,7 +298,7 @@ namespace XmlRpc {
                     xmlDocument.LoadXml(dataResponse);
 
                     successful = true;
-                } catch (Exception e) {                    
+                } catch (Exception e) {
                     if (AttemptsRequest >= Attempts) {
                         TimeRequest = (int)TimeSpan.FromMilliseconds(Environment.TickCount).Subtract(startTime).Duration().TotalMilliseconds;
                         if (e.GetType().Equals(typeof(WebException))) {
@@ -320,7 +306,7 @@ namespace XmlRpc {
                             if (we.Status == WebExceptionStatus.Timeout) {
                                 throw new WebServiceTimeoutException("Timeout exception, operation has expired", e);
                             }
-                        }                        
+                        }
                         throw new WebServiceException("Error sending request", e);
                     } else {
                         Thread.Sleep(AttemptsTimeout);
